@@ -1,0 +1,381 @@
+### Health Check
+GET http://localhost:3001/
+Content-Type: application/json
+
+### Authentication Endpoints
+
+### Register User
+POST http://localhost:3001/api/auth/register
+Content-Type: application/json
+
+{
+  "first_name": "jane",
+  "last_name": "Doe",
+  "email": "jane.doe@example.com",
+  "password": "password123",
+  "contact_phone": "0725401081",
+  "address": "123 Main St, City, Country"
+}
+
+### Login User
+POST http://localhost:3001/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "jane.doe@example.com",
+  "password": "password123"
+}
+
+### Verify Email
+POST http://localhost:3001/api/auth/verify
+Content-Type: application/json
+
+{
+  "token": "peter.doe@example.com"
+}
+
+### Refresh Token
+POST http://localhost:3001/api/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "refresh_token_here"
+}
+
+### Forgot Password
+POST http://localhost:3001/api/auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "john.doe@example.com"
+}
+
+### User Endpoints
+
+### Get All Users (Admin Only)
+GET http://localhost:3001/api/users
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiQUY0OTM4NjYtM0FBMS00ODJDLUE4QjctMkJDRDQzMkQ5Q0Q4IiwiZmlyc3RfbmFtZSI6InBldGVyIiwibGFzdF9uYW1lIjoiRG9lIiwiZW1haWwiOiJwZXRlci5kb2VAZXhhbXBsZS5jb20iLCJyb2xlIjoidXNlciIsImlhdCI6MTc2MzcwNzI4MCwiZXhwIjoxNzYzNzEwODgwfQ.Z3weAd8QyZITGzlbOzIUJQu6PVjjuhfmf4mLLmfhqwI
+Content-Type: application/json
+
+### Get User by ID (Admin or Owner)
+GET http://localhost:3001/api/users/AF493866-3AA1-482C-A8B7-2BCD432D9CD8
+Authorization: D9579419-C879-4EB3-8A67-1CADB3C81862
+Content-Type: application/json
+
+### Create User (Public - Registration)
+POST http://localhost:3001/api/users
+Content-Type: application/json
+
+{
+  "first_name": "Jane",
+  "last_name": "Smith",
+  "email": "jane.smith@example.com",
+  "password": "password123",
+  "contact_phone": "+1234567891",
+  "address": "456 Oak St, City, Country",
+  "role": "user"
+}
+
+### Update User (Admin or Owner)
+PUT http://localhost:3001/api/users/user_id_here
+Authorization: Bearer user_token_here
+Content-Type: application/json
+
+{
+  "first_name": "Jane",
+  "last_name": "Smith",
+  "email": "jane.updated@example.com",
+  "contact_phone": "+1234567891",
+  "address": "456 Updated St, City, Country",
+  "role": "user"
+}
+
+### Delete User (Admin Only)
+DELETE http://localhost:3001/api/users/user_id_here
+Authorization: Bearer admin_token_here
+Content-Type: application/json
+
+### Vehicle Endpoints
+
+### Get All Vehicles (Public)
+GET http://localhost:3001/api/vehicles
+Content-Type: application/json
+
+### Get Vehicle by ID (Public)
+GET http://localhost:3001/api/vehicles/89820C61-F4FC-440B-AD07-99B30E685421
+Content-Type: application/json
+
+### Create Vehicle (Admin Only)
+POST http://localhost:3001/api/vehicles
+Authorization: Bearer admin_token_here
+Content-Type: application/json
+
+{
+  "vehicle_spec_id": "FB162940-56A4-4375-BADA-12620A806DA4",
+  "rental_rate": 50.00,
+  "availability": true
+}
+
+### Update Vehicle (Admin Only)
+PUT http://localhost:3001/api/vehicles/89820C61-F4FC-440B-AD07-99B30E685421
+Authorization: Bearer admin_token_here
+Content-Type: application/json
+
+{
+  "vehicle_spec_id": "E0AC9284-8AAE-42B5-B913-2B08D751E3AD",
+  "rental_rate": 50.00,
+  "availability": true
+}
+
+### Delete Vehicle (Admin Only)
+DELETE http://localhost:3001/api/vehicles/vehicle_id_here
+Authorization: Bearer admin_token_here
+Content-Type: application/json
+
+### Vehicle Specification Endpoints
+
+### Get All Vehicle Specifications (Public)
+GET http://localhost:3001/api/vehiclespecs
+Content-Type: application/json
+
+### Get Vehicle Specification by ID (Public)
+GET http://localhost:3001/api/vehiclespecs/FB162940-56A4-4375-BADA-12620A806DA4
+Content-Type: application/json
+
+### Create Vehicle Specification (Admin Only)
+POST http://localhost:3001/api/vehiclespecs
+Authorization: Bearer admin_token_here
+Content-Type: application/json
+
+{
+  "manufacturer": "mazda",
+  "model": "x5",
+  "year": 2024,
+  "fuel_type": "Petrol",
+  "engine_capacity": "2.5L",
+  "transmission": "Automatic",
+  "seating_capacity": 5,
+  "color": "blue",
+  "features": "GPS, Bluetooth, Air Conditioning"
+}
+
+### Update Vehicle Specification (Admin Only)
+PUT http://localhost:3001/api/vehiclespecs/spec_id_here
+Authorization: Bearer admin_token_here
+Content-Type: application/json
+
+{
+  "manufacturer": "Toyota",
+  "model": "Camry LE",
+  "year": 2023,
+  "fuel_type": "Petrol",
+  "engine_capacity": "2.5L",
+  "transmission": "Automatic",
+  "seating_capacity": 5,
+  "color": "Pearl White",
+  "features": "GPS, Bluetooth, Air Conditioning, Sunroof"
+}
+
+### Delete Vehicle Specification (Admin Only)
+DELETE http://localhost:3001/api/vehiclespecs/spec_id_here
+Authorization: Bearer admin_token_here
+Content-Type: application/json
+
+### Location Endpoints
+
+### Get All Locations (Public)
+GET http://localhost:3001/api/locations
+Content-Type: application/json
+
+### Get Location by ID (Public)
+GET http://localhost:3001/api/locations/location_id_here
+Content-Type: application/json
+
+### Create Location (Admin Only)
+POST http://localhost:3001/api/locations
+Authorization: Bearer admin_token_here
+Content-Type: application/json
+
+{
+  "name": "Downtown Branch",
+  "address": "789 City Center, Downtown",
+  "city": "Metropolis",
+  "country": "Country"
+}
+
+### Update Location (Admin Only)
+PUT http://localhost:3001/api/locations/location_id_here
+Authorization: Bearer admin_token_here
+Content-Type: application/json
+
+{
+  "name": "Downtown Main Branch",
+  "address": "789 Updated City Center, Downtown",
+  "city": "Metropolis",
+  "country": "Country"
+}
+
+### Delete Location (Admin Only)
+DELETE http://localhost:3001/api/locations/location_id_here
+Authorization: Bearer admin_token_here
+Content-Type: application/json
+
+### Booking Endpoints
+
+### Get All Bookings (Admin Only)
+GET http://localhost:3001/api/bookings
+Authorization: Bearer admin_token_here
+Content-Type: application/json
+
+### Get Booking by ID (Admin Only)
+GET http://localhost:3001/api/bookings/booking_id_here
+Authorization: Bearer admin_token_here
+Content-Type: application/json
+### create a booking
+
+POST http://localhost:3001/api/bookings
+Content-Type: application/json
+
+{
+  "user_id": "8FF2DF17-0CF7-4B5F-828A-999E0886C00E",
+  "vehicle_id": "89820C61-F4FC-440B-AD07-99B30E685421", 
+  "location_id": "F1E7BB51-EFA7-4DDF-BF06-33532921367F",
+  "booking_date": "2024-01-15T10:00:00Z",
+  "return_date": "2024-01-20T10:00:00Z",
+  "total_amount": 225.00,
+  "booking_status": "Pending"
+}
+
+### Update Booking (Admin Only)
+PUT http://localhost:3001/api/bookings/booking_id_here
+Authorization: Bearer admin_token_here
+Content-Type: application/json
+
+{
+  "user_id": "user_id_here",
+  "vehicle_id": "vehicle_id_here",
+  "location_id": "location_id_here",
+  "booking_date": "2024-01-15T10:00:00Z",
+  "return_date": "2024-01-20T10:00:00Z",
+  "total_amount": 250.00,
+  "booking_status": "Confirmed"
+}
+
+### Delete Booking (Admin Only)
+DELETE http://localhost:3001/api/bookings/booking_id_here
+Authorization: Bearer admin_token_here
+Content-Type: application/json
+
+### Payment Endpoints
+
+### Get All Payments (Admin Only)
+GET http://localhost:3001/api/payments
+Authorization: Bearer admin_token_here
+Content-Type: application/json
+
+### Get Payment by ID (Admin Only)
+GET http://localhost:3001/api/payments/payment_id_here
+Authorization: Bearer admin_token_here
+Content-Type: application/json
+
+### Create Payment (Public - Customer)
+POST http://localhost:3001/api/payments
+Content-Type: application/json
+
+{
+  "booking_id": "CB3D5459-E597-45D8-B0E9-73E1E02B65E9",
+  "amount": 225.00,
+  "payment_status": "Pending",
+  "payment_method": "Stripe",
+  "transaction_id": "txn_123456789"
+}
+
+### Update Payment (Admin Only)
+PUT http://localhost:3001/api/payments/payment_id_here
+Authorization: Bearer admin_token_here
+Content-Type: application/json
+
+{
+  "booking_id": "booking_id_here",
+  "amount": 225.00,
+  "payment_status": "Success",
+  "payment_method": "Stripe",
+  "transaction_id": "txn_123456789"
+}
+
+### Delete Payment (Admin Only)
+DELETE http://localhost:3001/api/payments/payment_id_here
+Authorization: Bearer admin_token_here
+Content-Type: application/json
+
+### Support Ticket Endpoints
+
+### Get All Tickets (Admin Only)
+GET http://localhost:3001/api/tickets
+Authorization: Bearer admin_token_here
+Content-Type: application/json
+
+### Get Ticket by ID (Admin Only)
+GET http://localhost:3001/api/tickets/ticket_id_here
+Authorization: Bearer admin_token_here
+Content-Type: application/json
+
+### Create Ticket (Public - Customer)
+POST http://localhost:3001/api/tickets
+Content-Type: application/json
+
+{
+  "user_id": "8FF2DF17-0CF7-4B5F-828A-999E0886C00E",
+  "subject": "Vehicle Issue",
+  "description": "The vehicle I rented has a problem with the AC system.",
+  "status": "Open"
+}
+
+### Update Ticket (Admin Only)
+PUT http://localhost:3001/api/tickets/ticket_id_here
+Authorization: Bearer admin_token_here
+Content-Type: application/json
+
+{
+  "user_id": "user_id_here",
+  "subject": "Vehicle AC Issue - Resolved",
+  "description": "The vehicle I rented has a problem with the AC system. This has been resolved.",
+  "status": "Resolved",
+  "assigned_admin_id": "admin_user_id_here"
+}
+
+### Delete Ticket (Admin Only)
+DELETE http://localhost:3001/api/tickets/ticket_id_here
+Authorization: Bearer admin_token_here
+Content-Type: application/json
+
+### Admin Endpoints
+
+### Get All Users (Admin)
+GET http://localhost:3001/api/admin/users
+Authorization: Bearer admin_token_here
+Content-Type: application/json
+
+### Get All Vehicles (Admin)
+GET http://localhost:3001/api/admin/vehicles
+Authorization: Bearer admin_token_here
+Content-Type: application/json
+
+### Get All Bookings (Admin)
+GET http://localhost:3001/api/admin/bookings
+Authorization: Bearer admin_token_here
+Content-Type: application/json
+
+### Get All Payments (Admin)
+GET http://localhost:3001/api/admin/payments
+Authorization: Bearer admin_token_here
+Content-Type: application/json
+
+### Get All Tickets (Admin)
+GET http://localhost:3001/api/admin/tickets
+Authorization: Bearer admin_token_here
+Content-Type: application/json
+
+### Metrics
+GET http://localhost:3001/metrics
+Content-Type: application/json

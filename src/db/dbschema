@@ -1,0 +1,91 @@
+-- Users Table (Matches your structure)
+CREATE TABLE Users (
+    user_id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+    first_name NVARCHAR(100) NOT NULL,
+    last_name NVARCHAR(100) NOT NULL,
+    email NVARCHAR(255) UNIQUE NOT NULL,
+    password NVARCHAR(255) NOT NULL,
+    contact_phone NVARCHAR(50),
+    address NVARCHAR(500),
+    role NVARCHAR(20) CHECK (role IN ('user', 'admin')) DEFAULT 'user',
+    created_at DATETIMEOFFSET DEFAULT SYSDATETIMEOFFSET(),
+    updated_at DATETIMEOFFSET DEFAULT SYSDATETIMEOFFSET()
+);
+
+-- Vehicle Specification Table (Matches your structure)
+CREATE TABLE VehicleSpecification (
+    vehicleSpec_id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+    manufacturer NVARCHAR(200) NOT NULL,
+    model NVARCHAR(200) NOT NULL,
+    year INT NOT NULL,
+    fuel_type NVARCHAR(50),
+    engine_capacity NVARCHAR(50),
+    transmission NVARCHAR(50),
+    seating_capacity INT,
+    color NVARCHAR(50),
+    features NVARCHAR(MAX)
+);
+
+-- Locations Table (New - based on your location_id FK)
+CREATE TABLE Locations (
+    location_id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+    name NVARCHAR(255) NOT NULL,
+    address NVARCHAR(500),
+    city NVARCHAR(100),
+    country NVARCHAR(100),
+    created_at DATETIMEOFFSET DEFAULT SYSDATETIMEOFFSET()
+);
+
+-- Vehicles Table (Adjusted for your structure)
+CREATE TABLE Vehicles (
+    vehicle_id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+    vehicle_spec_id UNIQUEIDENTIFIER NOT NULL,
+    rental_rate DECIMAL(10,2) NOT NULL,
+    availability BIT DEFAULT 1,
+    created_at DATETIMEOFFSET DEFAULT SYSDATETIMEOFFSET(),
+    updated_at DATETIMEOFFSET DEFAULT SYSDATETIMEOFFSET(),
+    FOREIGN KEY (vehicle_spec_id) REFERENCES VehicleSpecification(vehicleSpec_id)
+);
+
+-- Bookings Table (Adjusted for your structure)
+CREATE TABLE Bookings (
+    booking_id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+    user_id UNIQUEIDENTIFIER NOT NULL,
+    vehicle_id UNIQUEIDENTIFIER NOT NULL,
+    location_id UNIQUEIDENTIFIER NOT NULL,
+    booking_date DATETIMEOFFSET NOT NULL,
+    return_date DATETIMEOFFSET NOT NULL,
+    total_amount DECIMAL(10,2) NOT NULL,
+    booking_status NVARCHAR(50) DEFAULT 'Pending',
+    created_at DATETIMEOFFSET DEFAULT SYSDATETIMEOFFSET(),
+    updated_at DATETIMEOFFSET DEFAULT SYSDATETIMEOFFSET(),
+    FOREIGN KEY (user_id) REFERENCES Users(user_id),
+    FOREIGN KEY (vehicle_id) REFERENCES Vehicles(vehicle_id),
+    FOREIGN KEY (location_id) REFERENCES Locations(location_id)
+);
+
+-- Payments Table (Adjusted for your structure)
+CREATE TABLE Payments (
+    payment_id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+    booking_id UNIQUEIDENTIFIER NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    payment_status NVARCHAR(50) DEFAULT 'Pending',
+    payment_date DATETIMEOFFSET,
+    payment_method NVARCHAR(50),
+    transaction_id NVARCHAR(255),
+    created_at DATETIMEOFFSET DEFAULT SYSDATETIMEOFFSET(),
+    updated_at DATETIMEOFFSET DEFAULT SYSDATETIMEOFFSET(),
+    FOREIGN KEY (booking_id) REFERENCES Bookings(booking_id)
+);
+
+-- Customer Support Tickets Table (Matches your structure)
+CREATE TABLE CustomerSupportTickets (
+    ticket_id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+    user_id UNIQUEIDENTIFIER NOT NULL,
+    subject NVARCHAR(255) NOT NULL,
+    description NVARCHAR(MAX) NOT NULL,
+    status NVARCHAR(50) DEFAULT 'Open',
+    created_at DATETIMEOFFSET DEFAULT SYSDATETIMEOFFSET(),
+    updated_at DATETIMEOFFSET DEFAULT SYSDATETIMEOFFSET(),
+    FOREIGN KEY (user_id) REFERENCES Users(user_id)
+);
