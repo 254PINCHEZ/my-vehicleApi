@@ -1,22 +1,31 @@
 import { Hono } from 'hono'
-import * as UserControllers from '../users/users.controller.ts'
-import { adminRoleAuth } from '../middleware/bearauth.ts'
+import * as userControllers from './users.controller.ts'
+import { adminRoleAuth, customerRoleAuth } from '../middleware/bearauth.ts'
 
-const UserRoutes = new Hono()
+const userRoutes = new Hono()
+
+// Change password (customer only)
+userRoutes.put('/users/change-password', customerRoleAuth, userControllers.changePassword) 
+
+// Create user
+userRoutes.post('/users', userControllers.createUser) 
 
 // Get all users
-UserRoutes.get('/users',  UserControllers.getAllUsers)
+userRoutes.get('/users', adminRoleAuth, userControllers.getAllUsers)
 
-// Get user by user id
-UserRoutes.get('/users/:user_id',  UserControllers.getUserById)
+// Get user by ID
+userRoutes.get('/users/:user_id', adminRoleAuth, userControllers.getUserById)
 
-// Create a user
-UserRoutes.post('/users', UserControllers.createUser)
+// Update user (full update - PUT)
+userRoutes.put('/users/:user_id', adminRoleAuth, userControllers.updateUser)
 
-// Update user by user id
-UserRoutes.put('/users/:user_id',  UserControllers.updateUser)
+// Update user (partial update - PATCH)
+userRoutes.patch('/users/:user_id', adminRoleAuth, userControllers.patchUser)
 
-// Delete user by user id
-UserRoutes.delete('/users/:user_id',  UserControllers.deleteUser)
+// Delete user
+userRoutes.delete('/users/:user_id', adminRoleAuth, userControllers.deleteUser)
 
-export default UserRoutes
+// Update user role only (specific PATCH endpoint)
+userRoutes.patch('/user-status/:user_id', adminRoleAuth, userControllers.updateUserRole)
+
+export default userRoutes

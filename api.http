@@ -9,9 +9,9 @@ POST http://localhost:3001/api/auth/register
 Content-Type: application/json
 
 {
-  "first_name": "jane",
-  "last_name": "Doe",
-  "email": "jane.doe@example.com",
+  "first_name": "jecy",
+  "last_name": "karish",
+  "email": "ngim.doe@example.com",
   "password": "password123",
   "contact_phone": "0725401081",
   "address": "123 Main St, City, Country"
@@ -22,7 +22,7 @@ POST http://localhost:3001/api/auth/login
 Content-Type: application/json
 
 {
-  "email": "jane.doe@example.com",
+  "email": "ngima.doe@example.com",
   "password": "password123"
 }
 
@@ -111,7 +111,7 @@ Authorization: Bearer admin_token_here
 Content-Type: application/json
 
 {
-  "vehicle_spec_id": "FB162940-56A4-4375-BADA-12620A806DA4",
+  "vehicle_spec_id": "7B831803-AC58-43E0-ADB6-42369F69C52BA816962F-7798-4EAD-ACAA-62B38354AF6C",
   "rental_rate": 50.00,
   "availability": true
 }
@@ -122,7 +122,7 @@ Authorization: Bearer admin_token_here
 Content-Type: application/json
 
 {
-  "vehicle_spec_id": "E0AC9284-8AAE-42B5-B913-2B08D751E3AD",
+  "vehicle_spec_id": "A816962F-7798-4EAD-ACAA-62B38354AF6C",
   "rental_rate": 50.00,
   "availability": true
 }
@@ -148,14 +148,14 @@ Authorization: Bearer admin_token_here
 Content-Type: application/json
 
 {
-  "manufacturer": "mazda",
-  "model": "x5",
-  "year": 2024,
-  "fuel_type": "Petrol",
+  "manufacturer": "Rimozin",
+  "model": "x9",
+  "year": 2025,
+  "fuel_type": "super",
   "engine_capacity": "2.5L",
   "transmission": "Automatic",
   "seating_capacity": 5,
-  "color": "blue",
+  "color": "green",
   "features": "GPS, Bluetooth, Air Conditioning"
 }
 
@@ -237,11 +237,11 @@ POST http://localhost:3001/api/bookings
 Content-Type: application/json
 
 {
-  "user_id": "8FF2DF17-0CF7-4B5F-828A-999E0886C00E",
-  "vehicle_id": "89820C61-F4FC-440B-AD07-99B30E685421", 
-  "location_id": "F1E7BB51-EFA7-4DDF-BF06-33532921367F",
-  "booking_date": "2024-01-15T10:00:00Z",
-  "return_date": "2024-01-20T10:00:00Z",
+  "user_id": "33606559-E28D-4F01-8561-8B45F6610B3A",
+  "vehicle_id": "6CF5F444-27B5-43C9-A815-8FA9B0037BD6", 
+  "location_id": "F4F81E8C-B07B-476D-A921-FEC6781C89DD",
+  "booking_date": "2026-01-15T10:00:00Z",
+  "return_date": "2026-01-20T10:00:00Z",
   "total_amount": 225.00,
   "booking_status": "Pending"
 }

@@ -27,6 +27,73 @@ export const getBookingById = async (c: Context) => {
   }
 };
 
+// ✅ Get all bookings for a specific user
+export const getBookingsByUserId = async (c: Context) => {
+  try {
+    // Get user_id from query parameter or from authenticated user
+    const user_id = c.req.query('user_id') || c.get('user')?.user_id;
+    
+    if (!user_id) {
+      return c.json({ error: "User ID is required" }, 400);
+    }
+
+    // Optional: Verify the authenticated user can only access their own bookings
+    // unless they are admin
+    const authUser = c.get('user');
+    if (authUser?.role !== 'admin' && authUser?.user_id !== user_id) {
+      return c.json({ error: "Unauthorized to access these bookings" }, 403);
+    }
+
+    const bookings = await bookingService.getBookingsByUserId(user_id);
+    return c.json(bookings, 200);
+  } catch (error: any) {
+    console.error("Error fetching user bookings:", error.message);
+    return c.json({ error: "Failed to fetch user bookings" }, 500);
+  }
+};
+
+// ✅ Cancel booking
+export const cancelBooking = async (c: Context) => {
+  const booking_id = c.req.param("booking_id");
+  if (!booking_id) return c.json({ error: "Invalid booking ID" }, 400);
+
+  try {
+    const { cancellation_reason } = await c.req.json();
+    
+    // Verify user can only cancel their own booking unless admin
+    const authUser = c.get('user');
+    
+    if (authUser?.role !== 'admin') {
+      // Check if this booking belongs to the authenticated user
+      const booking = await bookingService.getBookingById(booking_id);
+      if (!booking) {
+        return c.json({ error: "Booking not found" }, 404);
+      }
+      if (booking.user_id !== authUser?.user_id) {
+        return c.json({ error: "Unauthorized to cancel this booking" }, 403);
+      }
+    }
+
+    const result = await bookingService.cancelBooking(booking_id, cancellation_reason);
+    return c.json({ message: result }, 200);
+  } catch (error: any) {
+    console.error("Error cancelling booking:", error.message);
+    
+    // Return appropriate error messages
+    if (error.message.includes("already cancelled")) {
+      return c.json({ error: error.message }, 400);
+    }
+    if (error.message.includes("cannot be cancelled")) {
+      return c.json({ error: error.message }, 400);
+    }
+    if (error.message.includes("not found")) {
+      return c.json({ error: error.message }, 404);
+    }
+    
+    return c.json({ error: error.message || "Failed to cancel booking" }, 500);
+  }
+};
+
 // ✅ Create booking
 export const createBooking = async (c: Context) => {
   try {

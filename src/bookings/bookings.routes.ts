@@ -13,6 +13,9 @@ BookingRoutes.get('/bookings/:booking_id',  BookingControllers.getBookingById)
 // Create a booking
 BookingRoutes.post('/bookings', BookingControllers.createBooking)
 
+// Get bookings by user ID 
+BookingRoutes.get('/bookings/user/:user_id', BookingControllers.getBookingsByUserId)
+
 // Update booking by booking id
 BookingRoutes.put('/bookings/:booking_id',  BookingControllers.updateBooking)
 

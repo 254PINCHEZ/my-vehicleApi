@@ -24,6 +24,10 @@ export interface UserResponse {
   updated_at: Date;
 }
 
+export interface UpdateRoleData {
+  role: string;
+}
+
 export const getAllUsers = async (): Promise<UserResponse[]> => {
   const db = await getDbPool();
 
@@ -198,6 +202,104 @@ export const updateUser = async (
     .query(query);
 
   return await getUserById(user_id);
+};
+
+export const patchUser = async (
+  user_id: string,
+  data: Partial<{
+    first_name: string;
+    last_name: string;
+    email: string;
+    contact_phone: string;
+    address: string;
+    role: string;
+  }>
+): Promise<UserResponse | null> => {
+  const db = await getDbPool();
+
+  // Build dynamic update query
+  const updates: string[] = [];
+  const inputs: any = { user_id };
+
+  if (data.first_name !== undefined) {
+    updates.push("first_name = @first_name");
+    inputs.first_name = data.first_name;
+  }
+  if (data.last_name !== undefined) {
+    updates.push("last_name = @last_name");
+    inputs.last_name = data.last_name;
+  }
+  if (data.email !== undefined) {
+    updates.push("email = @email");
+    inputs.email = data.email;
+  }
+  if (data.contact_phone !== undefined) {
+    updates.push("contact_phone = @contact_phone");
+    inputs.contact_phone = data.contact_phone;
+  }
+  if (data.address !== undefined) {
+    updates.push("address = @address");
+    inputs.address = data.address;
+  }
+  if (data.role !== undefined) {
+    updates.push("role = @role");
+    inputs.role = data.role;
+  }
+
+  if (updates.length === 0) {
+    return await getUserById(user_id);
+  }
+
+  updates.push("updated_at = GETDATE()");
+
+  const query = `
+    UPDATE Users
+    SET ${updates.join(", ")}
+    WHERE user_id = @user_id
+  `;
+
+  const request = db.request();
+  
+  Object.keys(inputs).forEach(key => {
+    request.input(key, inputs[key]);
+  });
+
+  await request.query(query);
+
+  return await getUserById(user_id);
+};
+
+export const updateUserRole = async (
+  user_id: string,
+  data: UpdateRoleData
+): Promise<UserResponse | null> => {
+  console.log(`🔧 Updating user ${user_id} role to: ${data.role}`);
+  
+  const db = await getDbPool();
+
+  const query = `
+    UPDATE Users
+    SET 
+      role = @role,
+      updated_at = GETDATE()
+    WHERE user_id = @user_id
+  `;
+
+  console.log(`🔧 Executing SQL query: ${query}`);
+  
+  try {
+    const result = await db.request()
+      .input("user_id", user_id)
+      .input("role", data.role)
+      .query(query);
+
+    console.log(`🔧 Update successful. Rows affected: ${result.rowsAffected[0]}`);
+    
+    return await getUserById(user_id);
+  } catch (error: any) {
+    console.error('❌ Database error:', error.message);
+    throw error;
+  }
 };
 
 export const deleteUser = async (user_id: string): Promise<string> => {

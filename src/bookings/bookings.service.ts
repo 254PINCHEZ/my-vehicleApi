@@ -245,6 +245,178 @@ export const getBookingById = async (booking_id: string): Promise<BookingRespons
   };
 };
 
+// GET ALL BOOKINGS FOR A SPECIFIC USER
+export const getBookingsByUserId = async (user_id: string): Promise<BookingResponse[]> => {
+  const db = await getDbPool();
+
+  const query = `
+    SELECT 
+      b.booking_id,
+      b.user_id,
+      b.vehicle_id,
+      b.location_id,
+      b.booking_date,
+      b.return_date,
+      b.total_amount,
+      b.booking_status,
+      b.created_at,
+      b.updated_at,
+
+      -- User details
+      u.first_name AS user_first_name,
+      u.last_name AS user_last_name,
+      u.email AS user_email,
+      u.contact_phone AS user_contact_phone,
+
+      -- Vehicle details
+      v.rental_rate AS vehicle_rental_rate,
+      v.availability AS vehicle_availability,
+
+      -- Vehicle specification details
+      vs.vehicleSpec_id AS spec_id,
+      vs.manufacturer AS spec_manufacturer,
+      vs.model AS spec_model,
+      vs.year AS spec_year,
+      vs.fuel_type AS spec_fuel_type,
+
+      -- Location details
+      l.name AS location_name,
+      l.address AS location_address,
+      l.city AS location_city,
+      l.country AS location_country
+
+    FROM Bookings b
+    INNER JOIN Users u ON b.user_id = u.user_id
+    INNER JOIN Vehicles v ON b.vehicle_id = v.vehicle_id
+    INNER JOIN VehicleSpecification vs ON v.vehicle_spec_id = vs.vehicleSpec_id
+    INNER JOIN Locations l ON b.location_id = l.location_id
+    WHERE b.user_id = @user_id
+    ORDER BY b.created_at DESC
+  `;
+
+  const result = await db.request()
+    .input("user_id", user_id)
+    .query(query);
+
+  return result.recordset.map((row: any) => ({
+    booking_id: row.booking_id,
+    user_id: row.user_id,
+    vehicle_id: row.vehicle_id,
+    location_id: row.location_id,
+    booking_date: row.booking_date,
+    return_date: row.return_date,
+    total_amount: row.total_amount,
+    booking_status: row.booking_status,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+
+    user: {
+      user_id: row.user_id,
+      first_name: row.user_first_name,
+      last_name: row.user_last_name,
+      email: row.user_email,
+      contact_phone: row.user_contact_phone,
+    },
+
+    vehicle: {
+      vehicle_id: row.vehicle_id,
+      rental_rate: row.vehicle_rental_rate,
+      availability: row.vehicle_availability,
+      vehicle_spec: {
+        vehicleSpec_id: row.spec_id,
+        manufacturer: row.spec_manufacturer,
+        model: row.spec_model,
+        year: row.spec_year,
+        fuel_type: row.spec_fuel_type,
+      },
+    },
+
+    location: {
+      location_id: row.location_id,
+      name: row.location_name,
+      address: row.location_address,
+      city: row.location_city,
+      country: row.location_country,
+    },
+  }));
+};
+
+// CANCEL BOOKING (Update booking status to 'Cancelled')
+export const cancelBooking = async (booking_id: string, cancellation_reason?: string): Promise<string> => {
+  const db = await getDbPool();
+
+  // First check if booking exists and can be cancelled
+  const checkQuery = `
+    SELECT booking_status, booking_date 
+    FROM Bookings 
+    WHERE booking_id = @booking_id
+  `;
+
+  const checkResult = await db.request()
+    .input("booking_id", booking_id)
+    .query(checkQuery);
+
+  if (!checkResult.recordset.length) {
+    throw new Error("Booking not found");
+  }
+
+  const booking = checkResult.recordset[0];
+  
+  // Check booking status
+  if (booking.booking_status === 'Cancelled') {
+    throw new Error("Booking is already cancelled");
+  }
+
+  if (booking.booking_status === 'Completed') {
+    throw new Error("Completed bookings cannot be cancelled");
+  }
+
+  // Check if booking is starting soon (within 24 hours)
+  const bookingDate = new Date(booking.booking_date);
+  const now = new Date();
+  const hoursUntilBooking = (bookingDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+  
+  if (hoursUntilBooking < 24) {
+    throw new Error("Bookings cannot be cancelled within 24 hours of booking date");
+  }
+
+  // Update booking status to Cancelled
+  const updateQuery = `
+    UPDATE Bookings
+    SET 
+      booking_status = 'Cancelled',
+      updated_at = GETDATE()
+      ${cancellation_reason ? ', cancellation_reason = @cancellation_reason' : ''}
+    WHERE booking_id = @booking_id
+  `;
+
+  const request = db.request()
+    .input("booking_id", booking_id);
+
+  if (cancellation_reason) {
+    request.input("cancellation_reason", cancellation_reason);
+  }
+
+  const result = await request.query(updateQuery);
+
+  // Update vehicle availability back to true
+  const vehicleQuery = `
+    UPDATE Vehicles
+    SET availability = 1
+    WHERE vehicle_id = (
+      SELECT vehicle_id FROM Bookings WHERE booking_id = @booking_id
+    )
+  `;
+
+  await db.request()
+    .input("booking_id", booking_id)
+    .query(vehicleQuery);
+
+  return result.rowsAffected[0] === 1
+    ? "Booking cancelled successfully ✅"
+    : "Failed to cancel booking ❌";
+};
+
 
 // CREATE BOOKING
 

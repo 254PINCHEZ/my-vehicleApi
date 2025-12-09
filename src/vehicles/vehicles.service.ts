@@ -1,7 +1,7 @@
 import { getDbPool } from "../db/dbconfig.ts";
+import sql from "mssql";
 
 // Interfaces
-
 interface VehicleSpecInfo {
   vehicleSpec_id: string;
   manufacturer: string;
@@ -31,14 +31,29 @@ export interface VehicleResponse {
   availability: boolean;
   created_at: Date;
   updated_at: Date;
-
   vehicle_spec: VehicleSpecInfo;
   location: LocationInfo;
 }
 
+// Interface for creating a vehicle with specifications
+export interface CreateVehicleWithSpecData {
+  rental_rate: number;
+  availability: boolean;
+  location_id?: string;
+  vehicle_spec: {
+    manufacturer: string;
+    model: string;
+    year: number;
+    fuel_type: string;
+    engine_capacity?: string;
+    transmission?: string;
+    seating_capacity: number;
+    color: string;
+    features: string;
+  };
+}
 
 // GET ALL VEHICLES (with JOIN)
-
 export const getAllVehicles = async (): Promise<VehicleResponse[]> => {
   const db = await getDbPool();
 
@@ -114,9 +129,7 @@ export const getAllVehicles = async (): Promise<VehicleResponse[]> => {
   }));
 };
 
-
 // GET SINGLE VEHICLE BY ID
-
 export const getVehicleById = async (vehicle_id: string): Promise<VehicleResponse | null> => {
   const db = await getDbPool();
 
@@ -198,78 +211,287 @@ export const getVehicleById = async (vehicle_id: string): Promise<VehicleRespons
   };
 };
 
-
-// CREATE VEHICLE
-
-export const createVehicle = async (data: {
-  vehicle_spec_id: string;
-  rental_rate: number;
-  availability: boolean;
-}): Promise<string> => {
+// CREATE VEHICLE (UPDATED - Now accepts vehicle_spec object)
+export const createVehicle = async (data: CreateVehicleWithSpecData): Promise<{ message: string; vehicle_id?: string }> => {
   const db = await getDbPool();
 
-  const query = `
-    INSERT INTO Vehicles (vehicle_id, vehicle_spec_id, rental_rate, availability)
-    VALUES (NEWID(), @vehicle_spec_id, @rental_rate, @availability)
-  `;
+  try {
+    // Start transaction to ensure both inserts succeed or fail together
+    const transaction = new sql.Transaction(db);
+    
+    try {
+      await transaction.begin();
 
-  const result = await db.request()
-    .input("vehicle_spec_id", data.vehicle_spec_id)
-    .input("rental_rate", data.rental_rate)
-    .input("availability", data.availability)
-    .query(query);
+      // 1. Create Vehicle Specification
+      const createSpecQuery = `
+        INSERT INTO VehicleSpecification (
+          vehicleSpec_id, manufacturer, model, year, fuel_type, 
+          engine_capacity, transmission, seating_capacity, color, features
+        )
+        OUTPUT INSERTED.vehicleSpec_id
+        VALUES (NEWID(), @manufacturer, @model, @year, @fuel_type, 
+                @engine_capacity, @transmission, @seating_capacity, @color, @features);
+      `;
 
-  return result.rowsAffected[0] === 1
-    ? "Vehicle created successfully ✅"
-    : "Failed to create vehicle ❌";
+      const specRequest = new sql.Request(transaction);
+      const specResult = await specRequest
+        .input("manufacturer", sql.VarChar, data.vehicle_spec.manufacturer)
+        .input("model", sql.VarChar, data.vehicle_spec.model)
+        .input("year", sql.Int, data.vehicle_spec.year)
+        .input("fuel_type", sql.VarChar, data.vehicle_spec.fuel_type)
+        .input("engine_capacity", sql.VarChar, data.vehicle_spec.engine_capacity || null)
+        .input("transmission", sql.VarChar, data.vehicle_spec.transmission || null)
+        .input("seating_capacity", sql.Int, data.vehicle_spec.seating_capacity)
+        .input("color", sql.VarChar, data.vehicle_spec.color)
+        .input("features", sql.VarChar, data.vehicle_spec.features)
+        .query(createSpecQuery);
+
+      if (!specResult.recordset.length) {
+        throw new Error("Failed to create vehicle specification");
+      }
+
+      const vehicleSpec_id = specResult.recordset[0].vehicleSpec_id;
+
+      // 2. Create Vehicle with the generated specification ID
+      const createVehicleQuery = `
+        INSERT INTO Vehicles (vehicle_id, vehicle_spec_id, rental_rate, availability)
+        OUTPUT INSERTED.vehicle_id
+        VALUES (NEWID(), @vehicle_spec_id, @rental_rate, @availability);
+      `;
+
+      const vehicleRequest = new sql.Request(transaction);
+      const vehicleResult = await vehicleRequest
+        .input("vehicle_spec_id", sql.UniqueIdentifier, vehicleSpec_id)
+        .input("rental_rate", sql.Decimal(10, 2), data.rental_rate)
+        .input("availability", sql.Bit, data.availability)
+        .query(createVehicleQuery);
+
+      if (!vehicleResult.recordset.length) {
+        throw new Error("Failed to create vehicle");
+      }
+
+      const vehicle_id = vehicleResult.recordset[0].vehicle_id;
+
+      await transaction.commit();
+
+      return {
+        message: "Vehicle created successfully ✅",
+        vehicle_id: vehicle_id
+      };
+
+    } catch (transactionError) {
+      await transaction.rollback();
+      console.error("Transaction error:", transactionError);
+      throw new Error(`Transaction failed: ${transactionError.message}`);
+    }
+  } catch (error: any) {
+    console.error("Error in createVehicle service:", error);
+    throw new Error(`Failed to create vehicle: ${error.message}`);
+  }
 };
 
-
-// UPDATE VEHICLE
-
+// UPDATE VEHICLE (Updated to handle specification updates too if needed)
 export const updateVehicle = async (
   vehicle_id: string,
   data: {
-    vehicle_spec_id: string;
     rental_rate: number;
     availability: boolean;
+    vehicle_spec_id?: string; // Optional if updating specification separately
   }
 ): Promise<VehicleResponse | null> => {
   const db = await getDbPool();
 
-  const query = `
-    UPDATE Vehicles
-    SET 
-      vehicle_spec_id = @vehicle_spec_id,
-      rental_rate = @rental_rate,
-      availability = @availability,
-      updated_at = GETDATE()
-    WHERE vehicle_id = @vehicle_id
-  `;
+  try {
+    const query = `
+      UPDATE Vehicles
+      SET 
+        rental_rate = @rental_rate,
+        availability = @availability,
+        updated_at = SYSDATETIMEOFFSET()
+      WHERE vehicle_id = @vehicle_id
+    `;
 
-  await db.request()
-    .input("vehicle_id", vehicle_id)
-    .input("vehicle_spec_id", data.vehicle_spec_id)
-    .input("rental_rate", data.rental_rate)
-    .input("availability", data.availability)
-    .query(query);
+    await db.request()
+      .input("vehicle_id", sql.UniqueIdentifier, vehicle_id)
+      .input("rental_rate", sql.Decimal(10, 2), data.rental_rate)
+      .input("availability", sql.Bit, data.availability)
+      .query(query);
 
-  return await getVehicleById(vehicle_id);
+    // Return the updated vehicle
+    return await getVehicleById(vehicle_id);
+  } catch (error: any) {
+    console.error("Error in updateVehicle service:", error);
+    throw new Error(`Failed to update vehicle: ${error.message}`);
+  }
 };
 
+// UPDATE VEHICLE SPECIFICATION
+export const updateVehicleSpecification = async (
+  vehicleSpec_id: string,
+  data: {
+    manufacturer: string;
+    model: string;
+    year: number;
+    fuel_type: string;
+    engine_capacity?: string;
+    transmission?: string;
+    seating_capacity: number;
+    color: string;
+    features: string;
+  }
+): Promise<string> => {
+  const db = await getDbPool();
 
-// DELETE VEHICLE
+  try {
+    const query = `
+      UPDATE VehicleSpecification
+      SET 
+        manufacturer = @manufacturer,
+        model = @model,
+        year = @year,
+        fuel_type = @fuel_type,
+        engine_capacity = @engine_capacity,
+        transmission = @transmission,
+        seating_capacity = @seating_capacity,
+        color = @color,
+        features = @features,
+        updated_at = SYSDATETIMEOFFSET()
+      WHERE vehicleSpec_id = @vehicleSpec_id
+    `;
 
+    await db.request()
+      .input("vehicleSpec_id", sql.UniqueIdentifier, vehicleSpec_id)
+      .input("manufacturer", sql.VarChar, data.manufacturer)
+      .input("model", sql.VarChar, data.model)
+      .input("year", sql.Int, data.year)
+      .input("fuel_type", sql.VarChar, data.fuel_type)
+      .input("engine_capacity", sql.VarChar, data.engine_capacity || null)
+      .input("transmission", sql.VarChar, data.transmission || null)
+      .input("seating_capacity", sql.Int, data.seating_capacity)
+      .input("color", sql.VarChar, data.color)
+      .input("features", sql.VarChar, data.features)
+      .query(query);
+
+    return "Vehicle specification updated successfully ✅";
+  } catch (error: any) {
+    console.error("Error in updateVehicleSpecification service:", error);
+    throw new Error(`Failed to update vehicle specification: ${error.message}`);
+  }
+};
+
+// DELETE VEHICLE (Also deletes the associated specification)
 export const deleteVehicle = async (vehicle_id: string): Promise<string> => {
   const db = await getDbPool();
 
-  const query = "DELETE FROM Vehicles WHERE vehicle_id = @vehicle_id";
+  try {
+    // First get the vehicle_spec_id
+    const getSpecIdQuery = `
+      SELECT vehicle_spec_id FROM Vehicles WHERE vehicle_id = @vehicle_id
+    `;
+
+    const specResult = await db.request()
+      .input("vehicle_id", sql.UniqueIdentifier, vehicle_id)
+      .query(getSpecIdQuery);
+
+    if (!specResult.recordset.length) {
+      throw new Error("Vehicle not found");
+    }
+
+    const vehicle_spec_id = specResult.recordset[0].vehicle_spec_id;
+
+    // Start transaction
+    const transaction = new sql.Transaction(db);
+    
+    try {
+      await transaction.begin();
+
+      // 1. Delete the vehicle
+      const deleteVehicleQuery = `
+        DELETE FROM Vehicles WHERE vehicle_id = @vehicle_id
+      `;
+
+      const vehicleRequest = new sql.Request(transaction);
+      await vehicleRequest
+        .input("vehicle_id", sql.UniqueIdentifier, vehicle_id)
+        .query(deleteVehicleQuery);
+
+      // 2. Delete the vehicle specification (only if no other vehicle uses it)
+      const checkSpecUsageQuery = `
+        SELECT COUNT(*) as usage_count 
+        FROM Vehicles 
+        WHERE vehicle_spec_id = @vehicle_spec_id
+      `;
+
+      const checkRequest = new sql.Request(transaction);
+      const usageResult = await checkRequest
+        .input("vehicle_spec_id", sql.UniqueIdentifier, vehicle_spec_id)
+        .query(checkSpecUsageQuery);
+
+      const usageCount = usageResult.recordset[0].usage_count;
+
+      if (usageCount === 0) {
+        // No other vehicle uses this spec, so delete it
+        const deleteSpecQuery = `
+          DELETE FROM VehicleSpecification WHERE vehicleSpec_id = @vehicle_spec_id
+        `;
+
+        await new sql.Request(transaction)
+          .input("vehicle_spec_id", sql.UniqueIdentifier, vehicle_spec_id)
+          .query(deleteSpecQuery);
+      }
+
+      await transaction.commit();
+      
+      return "Vehicle deleted successfully 🗑️";
+
+    } catch (transactionError) {
+      await transaction.rollback();
+      throw transactionError;
+    }
+  } catch (error: any) {
+    console.error("Error in deleteVehicle service:", error);
+    throw new Error(`Failed to delete vehicle: ${error.message}`);
+  }
+};
+
+// GET VEHICLE SPECIFICATION BY ID
+export const getVehicleSpecificationById = async (vehicleSpec_id: string): Promise<VehicleSpecInfo | null> => {
+  const db = await getDbPool();
+
+  const query = `
+    SELECT 
+      vehicleSpec_id,
+      manufacturer,
+      model,
+      year,
+      fuel_type,
+      engine_capacity,
+      transmission,
+      seating_capacity,
+      color,
+      features
+    FROM VehicleSpecification
+    WHERE vehicleSpec_id = @vehicleSpec_id
+  `;
 
   const result = await db.request()
-    .input("vehicle_id", vehicle_id)
+    .input("vehicleSpec_id", sql.UniqueIdentifier, vehicleSpec_id)
     .query(query);
 
-  return result.rowsAffected[0] === 1
-    ? "Vehicle deleted successfully 🗑️"
-    : "Failed to delete vehicle ⚠️";
+  if (!result.recordset.length) return null;
+
+  const row = result.recordset[0];
+
+  return {
+    vehicleSpec_id: row.vehicleSpec_id,
+    manufacturer: row.manufacturer,
+    model: row.model,
+    year: row.year,
+    fuel_type: row.fuel_type,
+    engine_capacity: row.engine_capacity,
+    transmission: row.transmission,
+    seating_capacity: row.seating_capacity,
+    color: row.color,
+    features: row.features,
+  };
 };

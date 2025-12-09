@@ -19,7 +19,7 @@ export const getPaymentById = async (c: Context) => {
 
   try {
     const payment = await paymentService.getPaymentById(id);
-    if (!payment) return c.json({ error: "Payment not found" }, 404);
+    if (!id) return c.json({ error: "Payment not found" }, 404);
     return c.json(payment, 200);
   } catch (error: any) {
     console.error("Error fetching payment:", error.message);
@@ -39,15 +39,14 @@ export const createPayment = async (c: Context) => {
   }
 };
 
-// ✅ Update payment
+// ✅ Update payment - FIXED: Remove the truthiness check
 export const updatePayment = async (c: Context) => {
   const id = c.req.param("payment_id");
   if (!id) return c.json({ error: "Invalid payment ID" }, 400);
 
   try {
     const data = await c.req.json();
-    const updated = await paymentService.updatePayment(id, data);
-    if (!updated) return c.json({ error: "Payment not found" }, 404);
+    await paymentService.updatePayment(id, data);
     return c.json({ message: "Payment updated successfully" }, 200);
   } catch (error: any) {
     console.error("Error updating payment:", error.message);
@@ -66,5 +65,32 @@ export const deletePayment = async (c: Context) => {
   } catch (error: any) {
     console.error("Error deleting payment:", error.message);
     return c.json({ error: "Failed to delete payment" }, 500);
+  }
+};
+
+// ✅ CREATE STRIPE PAYMENT INTENT - NEW FUNCTION
+export const createStripePaymentIntent = async (c: Context) => {
+  try {
+    const data = await c.req.json();
+    const result = await paymentService.createStripePaymentIntent(data);
+    return c.json(result, 200);
+  } catch (error: any) {
+    console.error("Error creating Stripe payment intent:", error.message);
+    return c.json({ error: error.message || "Failed to create payment intent" }, 500);
+  }
+};
+
+// ✅ CONFIRM STRIPE PAYMENT - NEW FUNCTION
+export const confirmStripePayment = async (c: Context) => {
+  try {
+    const data = await c.req.json();
+    const result = await paymentService.confirmStripePayment(data);
+    return c.json({ 
+      message: "Payment confirmed and booking created successfully",
+      ...result 
+    }, 200);
+  } catch (error: any) {
+    console.error("Error confirming Stripe payment:", error.message);
+    return c.json({ error: error.message || "Failed to confirm payment" }, 500);
   }
 };

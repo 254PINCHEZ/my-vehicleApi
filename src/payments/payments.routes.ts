@@ -19,4 +19,10 @@ PaymentRoutes.put('/payments/:payment_id',  PaymentControllers.updatePayment)
 // Delete payment by payment id
 PaymentRoutes.delete('/payments/:payment_id',  PaymentControllers.deletePayment)
 
+// ✅ CREATE STRIPE PAYMENT INTENT - NEW ROUTE
+PaymentRoutes.post('/payments/create-intent', PaymentControllers.createStripePaymentIntent)
+
+// ✅ CONFIRM STRIPE PAYMENT - NEW ROUTE
+PaymentRoutes.post('/payments/confirm', PaymentControllers.confirmStripePayment)
+
 export default PaymentRoutes
