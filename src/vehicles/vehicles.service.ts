@@ -13,6 +13,7 @@ interface VehicleSpecInfo {
   seating_capacity: number;
   color: string;
   features: string;
+  image_url: string | null; // ADDED
 }
 
 interface LocationInfo {
@@ -50,6 +51,7 @@ export interface CreateVehicleWithSpecData {
     seating_capacity: number;
     color: string;
     features: string;
+    image_url?: string; // ADDED
   };
 }
 
@@ -76,8 +78,9 @@ export const getAllVehicles = async (): Promise<VehicleResponse[]> => {
       vs.seating_capacity AS spec_seating_capacity,
       vs.color AS spec_color,
       vs.features AS spec_features,
+      vs.image_url AS spec_image_url, -- ADDED
 
-      -- Location details (assuming vehicles have location or join through bookings)
+      -- Location details
       l.location_id AS vehicle_location_id,
       l.name AS location_name,
       l.address AS location_address,
@@ -116,6 +119,7 @@ export const getAllVehicles = async (): Promise<VehicleResponse[]> => {
       seating_capacity: row.spec_seating_capacity,
       color: row.spec_color,
       features: row.spec_features,
+      image_url: row.spec_image_url, // ADDED
     },
 
     location: {
@@ -152,6 +156,7 @@ export const getVehicleById = async (vehicle_id: string): Promise<VehicleRespons
       vs.seating_capacity AS spec_seating_capacity,
       vs.color AS spec_color,
       vs.features AS spec_features,
+      vs.image_url AS spec_image_url, -- ADDED
 
       -- Location details
       l.location_id AS vehicle_location_id,
@@ -198,6 +203,7 @@ export const getVehicleById = async (vehicle_id: string): Promise<VehicleRespons
       seating_capacity: row.spec_seating_capacity,
       color: row.spec_color,
       features: row.spec_features,
+      image_url: row.spec_image_url, // ADDED
     },
 
     location: {
@@ -211,12 +217,11 @@ export const getVehicleById = async (vehicle_id: string): Promise<VehicleRespons
   };
 };
 
-// CREATE VEHICLE (UPDATED - Now accepts vehicle_spec object)
+// CREATE VEHICLE (UPDATED - Now includes image_url)
 export const createVehicle = async (data: CreateVehicleWithSpecData): Promise<{ message: string; vehicle_id?: string }> => {
   const db = await getDbPool();
 
   try {
-    // Start transaction to ensure both inserts succeed or fail together
     const transaction = new sql.Transaction(db);
     
     try {
@@ -226,11 +231,11 @@ export const createVehicle = async (data: CreateVehicleWithSpecData): Promise<{ 
       const createSpecQuery = `
         INSERT INTO VehicleSpecification (
           vehicleSpec_id, manufacturer, model, year, fuel_type, 
-          engine_capacity, transmission, seating_capacity, color, features
+          engine_capacity, transmission, seating_capacity, color, features, image_url
         )
         OUTPUT INSERTED.vehicleSpec_id
         VALUES (NEWID(), @manufacturer, @model, @year, @fuel_type, 
-                @engine_capacity, @transmission, @seating_capacity, @color, @features);
+                @engine_capacity, @transmission, @seating_capacity, @color, @features, @image_url);
       `;
 
       const specRequest = new sql.Request(transaction);
@@ -244,6 +249,7 @@ export const createVehicle = async (data: CreateVehicleWithSpecData): Promise<{ 
         .input("seating_capacity", sql.Int, data.vehicle_spec.seating_capacity)
         .input("color", sql.VarChar, data.vehicle_spec.color)
         .input("features", sql.VarChar, data.vehicle_spec.features)
+        .input("image_url", sql.VarChar, data.vehicle_spec.image_url || null) // ADDED
         .query(createSpecQuery);
 
       if (!specResult.recordset.length) {
@@ -290,13 +296,13 @@ export const createVehicle = async (data: CreateVehicleWithSpecData): Promise<{ 
   }
 };
 
-// UPDATE VEHICLE (Updated to handle specification updates too if needed)
+// UPDATE VEHICLE
 export const updateVehicle = async (
   vehicle_id: string,
   data: {
     rental_rate: number;
     availability: boolean;
-    vehicle_spec_id?: string; // Optional if updating specification separately
+    vehicle_spec_id?: string;
   }
 ): Promise<VehicleResponse | null> => {
   const db = await getDbPool();
@@ -317,7 +323,6 @@ export const updateVehicle = async (
       .input("availability", sql.Bit, data.availability)
       .query(query);
 
-    // Return the updated vehicle
     return await getVehicleById(vehicle_id);
   } catch (error: any) {
     console.error("Error in updateVehicle service:", error);
@@ -325,7 +330,7 @@ export const updateVehicle = async (
   }
 };
 
-// UPDATE VEHICLE SPECIFICATION
+// UPDATE VEHICLE SPECIFICATION (Updated to include image_url)
 export const updateVehicleSpecification = async (
   vehicleSpec_id: string,
   data: {
@@ -338,6 +343,7 @@ export const updateVehicleSpecification = async (
     seating_capacity: number;
     color: string;
     features: string;
+    image_url?: string; // ADDED
   }
 ): Promise<string> => {
   const db = await getDbPool();
@@ -355,6 +361,7 @@ export const updateVehicleSpecification = async (
         seating_capacity = @seating_capacity,
         color = @color,
         features = @features,
+        image_url = @image_url, -- ADDED
         updated_at = SYSDATETIMEOFFSET()
       WHERE vehicleSpec_id = @vehicleSpec_id
     `;
@@ -370,6 +377,7 @@ export const updateVehicleSpecification = async (
       .input("seating_capacity", sql.Int, data.seating_capacity)
       .input("color", sql.VarChar, data.color)
       .input("features", sql.VarChar, data.features)
+      .input("image_url", sql.VarChar, data.image_url || null) // ADDED
       .query(query);
 
     return "Vehicle specification updated successfully ✅";
@@ -379,12 +387,11 @@ export const updateVehicleSpecification = async (
   }
 };
 
-// DELETE VEHICLE (Also deletes the associated specification)
+// DELETE VEHICLE
 export const deleteVehicle = async (vehicle_id: string): Promise<string> => {
   const db = await getDbPool();
 
   try {
-    // First get the vehicle_spec_id
     const getSpecIdQuery = `
       SELECT vehicle_spec_id FROM Vehicles WHERE vehicle_id = @vehicle_id
     `;
@@ -399,13 +406,11 @@ export const deleteVehicle = async (vehicle_id: string): Promise<string> => {
 
     const vehicle_spec_id = specResult.recordset[0].vehicle_spec_id;
 
-    // Start transaction
     const transaction = new sql.Transaction(db);
     
     try {
       await transaction.begin();
 
-      // 1. Delete the vehicle
       const deleteVehicleQuery = `
         DELETE FROM Vehicles WHERE vehicle_id = @vehicle_id
       `;
@@ -415,7 +420,6 @@ export const deleteVehicle = async (vehicle_id: string): Promise<string> => {
         .input("vehicle_id", sql.UniqueIdentifier, vehicle_id)
         .query(deleteVehicleQuery);
 
-      // 2. Delete the vehicle specification (only if no other vehicle uses it)
       const checkSpecUsageQuery = `
         SELECT COUNT(*) as usage_count 
         FROM Vehicles 
@@ -430,7 +434,6 @@ export const deleteVehicle = async (vehicle_id: string): Promise<string> => {
       const usageCount = usageResult.recordset[0].usage_count;
 
       if (usageCount === 0) {
-        // No other vehicle uses this spec, so delete it
         const deleteSpecQuery = `
           DELETE FROM VehicleSpecification WHERE vehicleSpec_id = @vehicle_spec_id
         `;
@@ -454,7 +457,7 @@ export const deleteVehicle = async (vehicle_id: string): Promise<string> => {
   }
 };
 
-// GET VEHICLE SPECIFICATION BY ID
+// GET VEHICLE SPECIFICATION BY ID (Updated to include image_url)
 export const getVehicleSpecificationById = async (vehicleSpec_id: string): Promise<VehicleSpecInfo | null> => {
   const db = await getDbPool();
 
@@ -469,7 +472,8 @@ export const getVehicleSpecificationById = async (vehicleSpec_id: string): Promi
       transmission,
       seating_capacity,
       color,
-      features
+      features,
+      image_url -- ADDED
     FROM VehicleSpecification
     WHERE vehicleSpec_id = @vehicleSpec_id
   `;
@@ -493,5 +497,6 @@ export const getVehicleSpecificationById = async (vehicleSpec_id: string): Promi
     seating_capacity: row.seating_capacity,
     color: row.color,
     features: row.features,
+    image_url: row.image_url, // ADDED
   };
 };
